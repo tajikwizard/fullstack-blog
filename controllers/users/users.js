@@ -1,18 +1,18 @@
 const User = require("../../model/user/User");
+const appError = require("../../utils/appError");
 const {hashPassword, verifyPassword } = require("../../utils/passwordHash");
 
-const register = async (req, res) => {
+const register = async (req, res,next) => {
     const { fullname, email, password } = req.body;
-
+    if(!fullname || !email || !password){
+        return next(appError("All fields are required!"));
+    }
     try {
         const emailNormalized = email.toLowerCase().trim();
 
         const userFound = await User.findOne({ email: emailNormalized });
         if (userFound) {
-            return res.status(409).json({
-                status: 'fail',
-                message: 'User already exists'
-            });
+           return next(appError('User already exists', 409));
         }
 
         const hashedPassword = await hashPassword(password);
@@ -31,33 +31,26 @@ const register = async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({
-            status: 'error',
-            error: error.message
-        });
+        return next(appError("Server error ", 500))
     }
 };
 
-const login = async (req, res) => {
+const login = async (req, res,next) => {
     const { email, password } = req.body;
-
+    if(!email || !password){
+        return next(appError("All fields are required!"));
+    }
     try {
         const emailNormalized = email.toLowerCase().trim();
 
         const userFound = await User.findOne({ email: emailNormalized });
         if (!userFound) {
-            return res.status(401).json({
-                status: 'fail',
-                message: 'Invalid credentials'
-            });
+            return next(appError("Invalid credentials ", 401))
         }
 
         const isValid = await verifyPassword(password, userFound.password);
         if (!isValid) {
-            return res.status(401).json({
-                status: 'fail',
-                message: 'Invalid credentials'
-            });
+            return next(appError("Invalid credentials ", 401))
         }
 
         const { password:_, ...userWithoutPassword } = userFound._doc; //omiting the password
@@ -69,10 +62,7 @@ const login = async (req, res) => {
         });
 
     } catch (error) {
-        res.status(500).json({
-            status: 'error',
-            error: error.message
-        });
+       return next(appError("Server error ", 500))
     }
 };
 const logout = (req, res) => {
