@@ -7,7 +7,7 @@ const commentRoutes = require("./routes/comments/comments"); //path to comments.
 const app = express();
 const PORT = process.env.PORT ||  3000;
 
-app.use(express.json());
+app.use(express.json()); //passing incoming data
 
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/posts", postRoutes);

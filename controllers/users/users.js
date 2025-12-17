@@ -1,23 +1,80 @@
-const register  = async (req, res) => {
+const User = require("../../model/user/User");
+const {hashPassword, verifyPassword } = require("../../utils/passwordHash");
+
+const register = async (req, res) => {
+    const { fullname, email, password } = req.body;
+
     try {
+        const emailNormalized = email.toLowerCase().trim();
+
+        const userFound = await User.findOne({ email: emailNormalized });
+        if (userFound) {
+            return res.status(409).json({
+                status: 'fail',
+                message: 'User already exists'
+            });
+        }
+
+        const hashedPassword = await hashPassword(password);
+
+        const user = await User.create({
+            fullname,
+            email: emailNormalized,
+            password: hashedPassword
+        });
+
+        const { password: _, ...userWithoutPassword } = user._doc;
+
         res.status(201).json({
             status: 'success',
-            message: 'new User registered successfully.'
+            data: userWithoutPassword
         });
+
     } catch (error) {
-        res.status(500).json({ status: 'error', error: error.message });
+        res.status(500).json({
+            status: 'error',
+            error: error.message
+        });
     }
-}
+};
+
 const login = async (req, res) => {
+    const { email, password } = req.body;
+
     try {
+        const emailNormalized = email.toLowerCase().trim();
+
+        const userFound = await User.findOne({ email: emailNormalized });
+        if (!userFound) {
+            return res.status(401).json({
+                status: 'fail',
+                message: 'Invalid credentials'
+            });
+        }
+
+        const isValid = await verifyPassword(password, userFound.password);
+        if (!isValid) {
+            return res.status(401).json({
+                status: 'fail',
+                message: 'Invalid credentials'
+            });
+        }
+
+        const { password:_, ...userWithoutPassword } = userFound._doc; //omiting the password
+
         res.status(200).json({
             status: 'success',
-            message: 'User logged in successfully.'
+            message: 'Login successful',
+            user: userWithoutPassword
         });
+
     } catch (error) {
-        res.status(500).json({ status: 'error', error: error.message });
+        res.status(500).json({
+            status: 'error',
+            error: error.message
+        });
     }
-}
+};
 const logout = (req, res) => {
     try {
         res.status(200).json({
